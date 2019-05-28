@@ -5,18 +5,21 @@
  */
 
 
-struct element * search(struct db *mdb,  cl_command_queue cq,  cl_kernel kernel,char *key){ 
+struct element * search(struct db *mdb, char *key){ 
     cl_int ret;
     struct element *e =(struct element *) malloc(sizeof(struct element ));
     size_t global_item_size;
+
+    cl_command_queue cq = clCreateCommandQueue(context, device_id, 0, &ret);  
+    cl_kernel kernel = clCreateKernel(program, "g_cache", &ret);     
 
     mdb->nodes_objs = clCreateBuffer(context, CL_MEM_READ_WRITE, MAX_ELEMENTS*sizeof(struct element), NULL, &ret);
     mdb->out_objs = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(struct element), NULL, &ret);
     mdb->key_objs = clCreateBuffer(context, CL_MEM_READ_WRITE, 40*sizeof(char), NULL, &ret);
 
-    ret = clEnqueueWriteBuffer(cq, mdb->nodes_objs, CL_TRUE, 0, MAX_ELEMENTS*sizeof(struct element), mdb->gchache, 0, NULL, NULL); 
-    ret = clEnqueueWriteBuffer(cq, mdb->key_objs, CL_TRUE, 0,40*sizeof(char), key, 0, NULL, NULL); 
     ret = clEnqueueWriteBuffer(cq, mdb->out_objs, CL_TRUE, 0, sizeof(struct element), e, 0, NULL, NULL); 
+    ret = clEnqueueWriteBuffer(cq, mdb->key_objs, CL_TRUE, 0,40*sizeof(char), key, 0, NULL, NULL); 
+     ret = clEnqueueWriteBuffer(cq, mdb->nodes_objs, CL_TRUE, 0, MAX_ELEMENTS*sizeof(struct element), mdb->gchache, 0, NULL, NULL); 
 
     ret = clSetKernelArg( kernel, 0, sizeof(cl_mem), (void *)&mdb->nodes_objs );
     ret = clSetKernelArg( kernel, 1, sizeof(cl_mem), (void *)&mdb->key_objs );
@@ -26,6 +29,7 @@ struct element * search(struct db *mdb,  cl_command_queue cq,  cl_kernel kernel,
     ret = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, &global_item_size, NULL, 0, NULL, NULL );
         if( ret != CL_SUCCESS )  
             printf("Kernel Main Error %d\n", ret);
+    
     ret = clEnqueueReadBuffer(cq, mdb->out_objs, CL_TRUE, 0, sizeof(struct element) , e, 0, NULL, NULL);
     return e;
 }

@@ -17,7 +17,7 @@ int create_elements(int id){
 int store_value(struct element *e,char *key, char *value) {
 
     memcpy( &(e->key), key, strlen(key)+1);
-    void *pt = malloc( strlen(key) );
+    void *pt = malloc( strlen(value) );
     memcpy( pt, value, strlen(value)+1);
     e->value = pt;
     printf("Value=%s", (char *)pt);

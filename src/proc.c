@@ -5,38 +5,39 @@
  * 
  */
 
-int del(struct db *mdb,  cl_command_queue cq,  cl_kernel kernel, char *key){
-    struct element *e =  search(mdb,  cq, kernel, key); 
+int del(struct db *mdb,  char *key){
+    struct element *e =  search(mdb,  key); 
     printf("DEL\n");
 
     bzero(e->key,40 );
-    free( e->value );
+    if(e->value != NULL) free( e->value );
     e->value = NULL;
     return 1;
 }
 
 
-int set(struct db *mdb,cl_command_queue cq,  cl_kernel kernel, char *key, char *value) {
+int set(struct db *mdb, char *key, char *value) {
     printf("SET key:%s and value %s\n", key, value );
     int i;
     // search search(struct db *mdb,  cl_command_queue cq,  cl_kernel kernel,char *key)
-    struct element *e = search(mdb,  cq, kernel, key);
+    struct element *e = search(mdb, key);
 
     if( e->value == NULL ) {
+        printf("Creando nuevo\n");
         for (i = 0; i < MAX_ELEMENTS; i++) {
             if(  mdb->gchache[i].value == NULL  )    
                     store_value( &mdb->gchache[i] ,key, value);
         }
     } else {
+        free( e->value );
         store_value( e ,key, value);
     }
     return 1;
 }
 
 
-char* get(struct db *mdb, cl_command_queue cq,  cl_kernel kernel, char *key){
-    struct element *e = search(mdb,  cq, kernel, key); // &mydb[0].gchache[0];
-    printf("GET key:%s \n", key );
+char* get(struct db *mdb, char *key){
+    struct element *e = search(mdb, key);
     return (char *)e->value ;
 }
 
@@ -64,28 +65,26 @@ void* processor(void *arg ){
     int client_id = *((int *)arg);
     char *cmd, *key, *value, response[BUFFER_LENGTH];
     char tk[4] = " \n\t";
-    char tkv[2] = "\n";
+    char tkv[2] = " \n";
     char buffer[BUFFER_LENGTH];
     int n = 0, dbptr = 0;
-
-    cl_command_queue cq;
-    cl_kernel kernel = clCreateKernel(program, "g_cache", &ret);     
-
+    
+    
     while((n = recv(client_id, buffer, BUFFER_LENGTH, 0)) > 0){
 
         cmd = strtok( buffer, tk );
         if (strcmp(cmd, "SET") == 0) {
             key = strtok( NULL, tk );
             value = strtok( NULL, tkv );
-            if( set( &mydb[dbptr],  cq,  kernel,hash( key), value) )
+            if( set( &mydb[dbptr],  hash( key), value) )
                 sprintf(response,"OK\n");    
 
         } else if (strcmp(cmd, "GET") == 0){
-            key = strtok( NULL, tk );
-            sprintf(response,"%s\n", get(&mydb[dbptr],  cq,  kernel,  hash(key)) );
+            key = strtok( NULL, tkv );
+            sprintf(response,"%s\n", get(&mydb[dbptr],   hash(key)) );
 
         } else if (strcmp(cmd, "DEL") == 0){
-            if(del(&mydb[dbptr], cq,  kernel,  hash( strtok( NULL, tk ) ) )){
+            if(del(&mydb[dbptr], hash( strtok( NULL, tkv ) ) )){
                 sprintf(response,"OK\n");
             }
         }else if (strcmp(cmd, "END") == 0){

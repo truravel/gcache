@@ -52,7 +52,6 @@ struct db mydb[1];
 char* gpu_name;
 cl_device_id device_id = NULL;
 cl_program program = NULL;
-cl_command_queue *cq;
 cl_platform_id platform_id = NULL;
 cl_uint ret_num_devices;
 cl_uint ret_num_platforms;
