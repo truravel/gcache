@@ -12,6 +12,7 @@ int del(struct db *mdb,  char *key){
     bzero(e->key,40 );
     if(e->value != NULL) free( e->value );
     e->value = NULL;
+    free(e);
     return 1;
 }
 
@@ -19,25 +20,28 @@ int del(struct db *mdb,  char *key){
 int set(struct db *mdb, char *key, char *value) {
     printf("SET key:%s and value %s\n", key, value );
     int i;
-    // search search(struct db *mdb,  cl_command_queue cq,  cl_kernel kernel,char *key)
     struct element *e = search(mdb, key);
 
     if( e->value == NULL ) {
         printf("Creando nuevo\n");
         for (i = 0; i < MAX_ELEMENTS; i++) {
-            if(  mdb->gchache[i].value == NULL  )    
+            if(  mdb->gchache[i].value == NULL  )    {
                     store_value( &mdb->gchache[i] ,key, value);
+                    break;
+            }
         }
     } else {
         free( e->value );
         store_value( e ,key, value);
     }
+    free(e);
     return 1;
 }
 
 
 char* get(struct db *mdb, char *key){
     struct element *e = search(mdb, key);
+    free(e);
     return (char *)e->value ;
 }
 
@@ -55,7 +59,9 @@ char * hash(char *key){
     for (i=0; i < SHA_DIGEST_LENGTH; i++) {
         sprintf((char*)&(buf[i*2]), "%02x", temp[i]);
     }
- 
+    
+            printf("HASH key:%s: and hash: %s\n", key, buf );
+
     return buf;
 }
 
@@ -72,6 +78,8 @@ void* processor(void *arg ){
     
     while((n = recv(client_id, buffer, BUFFER_LENGTH, 0)) > 0){
 
+        sprintf( buffer, "%s\n", buffer );
+
         cmd = strtok( buffer, tk );
         if (strcmp(cmd, "SET") == 0) {
             key = strtok( NULL, tk );
@@ -80,11 +88,12 @@ void* processor(void *arg ){
                 sprintf(response,"OK\n");    
 
         } else if (strcmp(cmd, "GET") == 0){
-            key = strtok( NULL, tkv );
+            key = strtok( NULL, tk );
+            printf("GET:%s:\n", key);
             sprintf(response,"%s\n", get(&mydb[dbptr],   hash(key)) );
 
         } else if (strcmp(cmd, "DEL") == 0){
-            if(del(&mydb[dbptr], hash( strtok( NULL, tkv ) ) )){
+            if(del(&mydb[dbptr], hash( strtok( NULL, tk ) ) )){
                 sprintf(response,"OK\n");
             }
         }else if (strcmp(cmd, "END") == 0){
@@ -99,7 +108,7 @@ void* processor(void *arg ){
         pthread_mutex_unlock(&lock);
         bzero(response, sizeof(BUFFER_LENGTH));
         
-
+        
     }
     
     close(client_id);

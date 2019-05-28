@@ -49,6 +49,7 @@ struct db {
 
 struct db mydb[1];
 
+
 char* gpu_name;
 cl_device_id device_id = NULL;
 cl_program program = NULL;

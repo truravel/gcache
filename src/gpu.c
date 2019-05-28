@@ -31,6 +31,10 @@ struct element * search(struct db *mdb, char *key){
             printf("Kernel Main Error %d\n", ret);
     
     ret = clEnqueueReadBuffer(cq, mdb->out_objs, CL_TRUE, 0, sizeof(struct element) , e, 0, NULL, NULL);
+    ret = clReleaseMemObject(mdb->out_objs);
+    ret = clReleaseMemObject( mdb->key_objs);
+    ret = clReleaseMemObject(mdb->out_objs); 
+
     return e;
 }
 
@@ -69,5 +73,7 @@ int gpu_load_kernel(){
         printf("\n####################################################\n%s\n####################################################\n", buf);
         return(-1);
     }
+
+
     return 1;
 }
