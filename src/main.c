@@ -14,27 +14,55 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <openssl/sha.h>
+
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#include <CL/cl.h>
+#endif
+
+
 
 #define PORT 3990
 #define BUFFER_LENGTH 2048
 #define MAX_PROCESS 50
+#define MAX_SOURCE_SIZE (0x200000)
+#define MAX_ELEMENTS 100
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct element{
-    unsigned int id;
-    char key[128];
+    char key[40];
     void *value;
 };
 
 struct db {
     unsigned long count;
     struct element *gchache;
+	cl_mem elements_objs;
+	cl_mem key_objs;
+	cl_mem out_objs;
+	cl_mem nodes_objs;
 };
 
 struct db mydb[1];
 
+char* gpu_name;
+cl_device_id device_id = NULL;
+cl_program program = NULL;
+cl_command_queue *cq;
+cl_platform_id platform_id = NULL;
+cl_uint ret_num_devices;
+cl_uint ret_num_platforms;
+cl_int ret;
+cl_context context = NULL;
+
+
+
 #include "db.c"
+#include "gpu.c"
 #include "proc.c"
 
 
@@ -73,7 +101,9 @@ int main(){
     printf("GCache Server Ready %ld\n", sizeof(struct element) );
     int i = 0;
     pthread_t tid[MAX_PROCESS];
-    
+	
+	if( !gpu_load_kernel() ) 
+		printf("GPU Error.\n" );
 
 	while(1){
 		client_sock = accept(sock_fd, (struct sockaddr*)&client, &addr_size);
